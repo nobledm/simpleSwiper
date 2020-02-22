@@ -1,0 +1,259 @@
+import React, { useState, Fragment } from "react";
+import {
+  Text,
+  View,
+  Dimensions,
+  Image,
+  Animated,
+  PanResponder
+} from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
+import { Button } from "./components/Button";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const SWIPE_THRESHOLD = 0.375 * SCREEN_WIDTH;
+const OUT_DURATION = 250;
+
+const DATA = [
+  { id: "1", uri: require("./assets/1.jpg") },
+  { id: "2", uri: require("./assets/2.jpg") },
+  { id: "3", uri: require("./assets/3.jpg") },
+  { id: "4", uri: require("./assets/4.jpg") },
+  { id: "5", uri: require("./assets/5.jpg") }
+];
+
+export default function Swiper() {
+  const position = new Animated.ValueXY();
+  const [currentIndex, setIndex] = useState(0);
+  const [liked, setLiked] = useState(0);
+  const [discarded, setDiscarded] = useState(0);
+
+  const rotate = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: ["-10deg", "0deg", "10deg"],
+    extrapolate: "clamp"
+  });
+
+  const rotateAndTranslate = {
+    transform: [{ rotate: rotate }, ...position.getTranslateTransform()]
+  };
+
+  const likeOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [0, 0, 1],
+    extrapolate: "clamp"
+  });
+
+  const dislikeOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [1, 0, 0],
+    extrapolate: "clamp"
+  });
+
+  const nextCardOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [1, 0, 1],
+    extrapolate: "clamp"
+  });
+
+  const nextCardScale = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [1, 0.8, 1],
+    extrapolate: "clamp"
+  });
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderMove: (e, gesture) => {
+      position.setValue({ x: gesture.dx, y: gesture.dy });
+    },
+    onPanResponderRelease: (e, gesture) => {
+      if (gesture.dx > SWIPE_THRESHOLD) {
+        forceSwipe("right");
+      } else if (gesture.dx < -SWIPE_THRESHOLD) {
+        forceSwipe("left");
+      } else {
+        Animated.spring(position, {
+          toValue: { x: 0, y: 0 },
+          friction: 4
+        }).start();
+      }
+    }
+  });
+
+  const forceSwipe = direction => {
+    const x = direction === "right" ? SCREEN_WIDTH + 100 : -SCREEN_WIDTH - 100;
+
+    Animated.timing(position, {
+      toValue: { x, y: 0 },
+      duration: OUT_DURATION
+    }).start(() => swipeCompleted(direction));
+  };
+
+  const swipeCompleted = direction => {
+    const listing = DATA[currentIndex];
+
+    direction === "left" ? swipedLeft(listing) : swipedRight(listing);
+
+    setIndex(currentIndex + 1);
+    position.setValue({ x: 0, y: 0 });
+  };
+
+  const swipedLeft = listing => {
+    console.log(`Discarded #${listing.id} (Total: ${discarded + 1})`);
+
+    setDiscarded(discarded + 1);
+  };
+
+  const swipedRight = listing => {
+    console.log(`Liked #${listing.id} (Total: ${liked + 1})`);
+
+    setLiked(liked + 1);
+  };
+
+  return (
+    <View style={styles.swiperBoundary}>
+      <View style={styles.cardContainer}>
+        {DATA.map((item, i) => {
+          if (i < currentIndex) {
+            return null;
+          } else if (i == currentIndex) {
+            return (
+              <Animated.View
+                {...panResponder.panHandlers}
+                key={item.id}
+                style={[styles.cards, rotateAndTranslate]}
+              >
+                <Animated.View
+                  style={[
+                    styles.actionTextContainer,
+                    {
+                      opacity: likeOpacity,
+                      left: 40,
+                      transform: [{ rotate: "-30deg" }]
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.actionText,
+                      {
+                        borderColor: "green",
+                        color: "green"
+                      }
+                    ]}
+                  >
+                    LIKE
+                  </Text>
+                </Animated.View>
+
+                <Animated.View
+                  style={[
+                    styles.actionTextContainer,
+                    {
+                      opacity: dislikeOpacity,
+                      right: 25,
+                      transform: [{ rotate: "30deg" }]
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.actionText,
+                      {
+                        borderColor: "red",
+                        color: "red"
+                      }
+                    ]}
+                  >
+                    DISCARD
+                  </Text>
+                </Animated.View>
+
+                <Image style={styles.imageBg} source={item.uri} />
+              </Animated.View>
+            );
+          } else {
+            return (
+              // The cards stacked below
+              <Animated.View
+                key={item.id}
+                style={[
+                  styles.cards,
+                  {
+                    opacity: nextCardOpacity,
+                    transform: [{ scale: nextCardScale }]
+                  }
+                ]}
+              >
+                <Image style={styles.imageBg} source={item.uri} />
+              </Animated.View>
+            );
+          }
+        }).reverse()}
+      </View>
+
+      <View style={styles.btnContainer}>
+        <Button
+          text={<FontAwesome name="remove" size={62} />}
+          fontSize={62}
+          width="30%"
+          bgColor="#F35151"
+        />
+
+        <Button
+          text={<FontAwesome name="undo" size={62} />}
+          fontSize={62}
+          width="30%"
+          bgColor="#FFC700"
+        />
+
+        <Button
+          text={<FontAwesome name="check" size={62} />}
+          fontSize={62}
+          width="30%"
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = {
+  swiperBoundary: {
+    height: "100%"
+  },
+  cardContainer: {
+    flex: 1
+  },
+  cards: {
+    height: "100%",
+    width: SCREEN_WIDTH,
+    padding: 10,
+    position: "absolute"
+  },
+  imageBg: {
+    flex: 1,
+    height: null,
+    width: null,
+    resizeMode: "cover",
+    borderRadius: 20
+  },
+  actionTextContainer: {
+    position: "absolute",
+    top: 50,
+    zIndex: 1000
+  },
+  actionText: {
+    borderWidth: 1,
+    fontSize: 32,
+    fontWeight: "bold",
+    padding: 10
+  },
+  btnContainer: {
+    height: 100,
+    width: "100%",
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    justifyContent: "space-between"
+  }
+};
