@@ -25,6 +25,8 @@ export default function Swiper() {
   const [currentIndex, setIndex] = useState(0);
   const [liked, setLiked] = useState(0);
   const [discarded, setDiscarded] = useState(0);
+  const [prevDirection, setPrevDirection] = useState("");
+  const [undoBtnDisabled, setBtnDisabled] = useState(true);
 
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -70,19 +72,55 @@ export default function Swiper() {
   });
 
   const forceSwipe = direction => {
-    const x = direction === "right" ? SCREEN_WIDTH + 100 : -SCREEN_WIDTH - 100;
+    let x = 0;
 
+    switch (direction) {
+      case "undo":
+        x = prevDirection === "left" ? -SCREEN_WIDTH - 100 : SCREEN_WIDTH + 100;
+        undoLastSwipe(x);
+        break;
+      case "left":
+        x = -SCREEN_WIDTH - 100;
+        animateSwipe(x, direction);
+        break;
+      case "right":
+        x = SCREEN_WIDTH + 100;
+        animateSwipe(x, direction);
+        break;
+    }
+  };
+
+  const animateSwipe = (x, direction, undo = false) => {
     Animated.timing(position, {
       toValue: { x, y: 0 },
       duration: OUT_DURATION
     }).start(() => {
-      direction === "left"
-        ? swipedLeft(homes[currentIndex])
-        : swipedRight(homes[currentIndex]);
+      if (!undo) {
+        direction === "left"
+          ? swipedLeft(homes[currentIndex])
+          : swipedRight(homes[currentIndex]);
 
-      setIndex(currentIndex + 1);
-      position.setValue({ x: 0, y: 0 });
+        setIndex(currentIndex + 1);
+        setBtnDisabled(false);
+        setPrevDirection(direction);
+
+        position.setValue({ x: 0, y: 0 });
+      }
     });
+  };
+
+  const undoLastSwipe = x => {
+    console.log("Undoing Swipe");
+
+    position.setValue({ x, y: 0 });
+    setIndex(currentIndex - 1);
+    setBtnDisabled(true);
+
+    animateSwipe(0, prevDirection, true);
+
+    prevDirection === "left"
+      ? setDiscarded(discarded - 1)
+      : setLiked(liked - 1);
   };
 
   const swipedLeft = listing => {
@@ -200,7 +238,7 @@ export default function Swiper() {
                 );
               } else {
                 return (
-                  // The cards stacked below
+                  // The card below
                   <Animated.View
                     key={listing.mls}
                     style={[
@@ -261,11 +299,12 @@ export default function Swiper() {
           />
 
           <Button
-            text={<FontAwesome name="undo" size={48} />}
+            text={<FontAwesome name="undo" size={36} />}
             fontSize={62}
-            width="30%"
+            width="20%"
             bgColor="#FFC700"
-            onClick={() => null}
+            disabled={undoBtnDisabled}
+            onClick={() => forceSwipe("undo")}
           />
 
           <Button

@@ -9,7 +9,8 @@ const Button = ({
   fontSize = 20,
   width = "auto",
   type = "primary",
-  centered = false
+  centered = false,
+  disabled = false
 }) => {
   if (type == "secondary") {
     bgColor = bgColor != "#12a765" ? bgColor : "grey";
@@ -26,6 +27,7 @@ const Button = ({
         }
       ]}
       onPress={onClick}
+      disabled={disabled}
     >
       <Text
         style={[
