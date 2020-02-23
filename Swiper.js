@@ -1,29 +1,25 @@
-import React, { useState, Fragment } from "react";
+import React, { useState } from "react";
 import {
   Text,
   View,
   Dimensions,
-  Image,
+  ImageBackground,
   Animated,
   PanResponder
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { Button } from "./components/Button";
+import Data from "./data.json";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.375 * SCREEN_WIDTH;
-const OUT_DURATION = 250;
-
-const DATA = [
-  { id: "1", uri: require("./assets/1.jpg") },
-  { id: "2", uri: require("./assets/2.jpg") },
-  { id: "3", uri: require("./assets/3.jpg") },
-  { id: "4", uri: require("./assets/4.jpg") },
-  { id: "5", uri: require("./assets/5.jpg") }
-];
+const OUT_DURATION = 500;
+const BASE_IMG_URI = "http://dbergeron2.dmitstudent.ca/img/";
 
 export default function Swiper() {
   const position = new Animated.ValueXY();
+
+  const [homes, setHomes] = useState(Data);
   const [currentIndex, setIndex] = useState(0);
   const [liked, setLiked] = useState(0);
   const [discarded, setDiscarded] = useState(0);
@@ -47,12 +43,6 @@ export default function Swiper() {
   const dislikeOpacity = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [1, 0, 0],
-    extrapolate: "clamp"
-  });
-
-  const nextCardOpacity = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: [1, 0, 1],
     extrapolate: "clamp"
   });
 
@@ -87,11 +77,13 @@ export default function Swiper() {
     Animated.timing(position, {
       toValue: { x, y: 0 },
       duration: OUT_DURATION
-    }).start(() => swipeCompleted(direction));
+    }).start(() => {
+      swipeCompleted(direction);
+    });
   };
 
   const swipeCompleted = direction => {
-    const listing = DATA[currentIndex];
+    const listing = homes[currentIndex];
 
     direction === "left" ? swipedLeft(listing) : swipedRight(listing);
 
@@ -100,122 +92,196 @@ export default function Swiper() {
   };
 
   const swipedLeft = listing => {
-    console.log(`Discarded #${listing.id} (Total: ${discarded + 1})`);
+    console.log(`Discarded #${listing.mls} (Total: ${discarded + 1})`);
 
     setDiscarded(discarded + 1);
   };
 
   const swipedRight = listing => {
-    console.log(`Liked #${listing.id} (Total: ${liked + 1})`);
+    console.log(`Liked #${listing.mls} (Total: ${liked + 1})`);
 
     setLiked(liked + 1);
   };
 
-  return (
-    <View style={styles.swiperBoundary}>
-      <View style={styles.cardContainer}>
-        {DATA.map((item, i) => {
-          if (i < currentIndex) {
-            return null;
-          } else if (i == currentIndex) {
-            return (
-              <Animated.View
-                {...panResponder.panHandlers}
-                key={item.id}
-                style={[styles.cards, rotateAndTranslate]}
-              >
-                <Animated.View
-                  style={[
-                    styles.actionTextContainer,
-                    {
-                      opacity: likeOpacity,
-                      left: 40,
-                      transform: [{ rotate: "-30deg" }]
-                    }
-                  ]}
-                >
-                  <Text
+  if (homes) {
+    return (
+      <View style={styles.swiperBoundary}>
+        <View style={styles.cardContainer}>
+          {homes
+            .map((listing, i) => {
+              if (i < currentIndex) {
+                return null;
+              } else if (i == currentIndex) {
+                return (
+                  <Animated.View
+                    {...panResponder.panHandlers}
+                    key={listing.mls}
+                    style={[styles.cards, rotateAndTranslate]}
+                  >
+                    <ImageBackground
+                      imageStyle={{ borderRadius: 10, resizeMode: "cover" }}
+                      style={styles.imageBg}
+                      source={{
+                        uri: BASE_IMG_URI + listing.images[0].split("/")[2]
+                      }}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.actionTextContainer,
+                          {
+                            opacity: likeOpacity,
+                            left: 40,
+                            transform: [{ rotate: "-30deg" }]
+                          }
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.actionText,
+                            {
+                              borderColor: "lightgreen",
+                              color: "lightgreen"
+                            }
+                          ]}
+                        >
+                          LIKE
+                        </Text>
+                      </Animated.View>
+
+                      <Animated.View
+                        style={[
+                          styles.actionTextContainer,
+                          {
+                            opacity: dislikeOpacity,
+                            right: 25,
+                            transform: [{ rotate: "30deg" }]
+                          }
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.actionText,
+                            {
+                              borderColor: "red",
+                              color: "red"
+                            }
+                          ]}
+                        >
+                          DISCARD
+                        </Text>
+                      </Animated.View>
+
+                      <View style={styles.label}>
+                        <Text style={styles.community}>
+                          {listing.community}
+                        </Text>
+
+                        <View style={styles.listingHighlights}>
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.beds}`}</Text>
+                          </View>
+
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.bath}`}</Text>
+                          </View>
+
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.sqft}`}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </Animated.View>
+                );
+              } else {
+                return (
+                  // The cards stacked below
+                  <Animated.View
+                    key={listing.mls}
                     style={[
-                      styles.actionText,
-                      {
-                        borderColor: "green",
-                        color: "green"
-                      }
+                      styles.cards,
+                      { transform: [{ scale: nextCardScale }] }
                     ]}
                   >
-                    LIKE
-                  </Text>
-                </Animated.View>
+                    <ImageBackground
+                      imageStyle={{ borderRadius: 10, resizeMode: "cover" }}
+                      source={{
+                        uri: BASE_IMG_URI + listing.images[0].split("/")[2]
+                      }}
+                      style={styles.imageBg}
+                    >
+                      <View style={styles.label}>
+                        <Text style={styles.community}>
+                          {listing.community}
+                        </Text>
 
-                <Animated.View
-                  style={[
-                    styles.actionTextContainer,
-                    {
-                      opacity: dislikeOpacity,
-                      right: 25,
-                      transform: [{ rotate: "30deg" }]
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.actionText,
-                      {
-                        borderColor: "red",
-                        color: "red"
-                      }
-                    ]}
-                  >
-                    DISCARD
-                  </Text>
-                </Animated.View>
+                        <View style={styles.listingHighlights}>
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.beds}`}</Text>
+                          </View>
 
-                <Image style={styles.imageBg} source={item.uri} />
-              </Animated.View>
-            );
-          } else {
-            return (
-              // The cards stacked below
-              <Animated.View
-                key={item.id}
-                style={[
-                  styles.cards,
-                  {
-                    opacity: nextCardOpacity,
-                    transform: [{ scale: nextCardScale }]
-                  }
-                ]}
-              >
-                <Image style={styles.imageBg} source={item.uri} />
-              </Animated.View>
-            );
-          }
-        }).reverse()}
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.bath}`}</Text>
+                          </View>
+
+                          <View style={styles.detail}>
+                            <FontAwesome name="star-o" size={20} />
+                            <Text
+                              style={{ fontSize: 20 }}
+                            >{`${listing.sqft}`}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </Animated.View>
+                );
+              }
+            })
+            .reverse()}
+        </View>
+
+        <View style={styles.btnContainer}>
+          <Button
+            text={<FontAwesome name="remove" size={48} />}
+            fontSize={62}
+            width="30%"
+            bgColor="#F35151"
+            onClick={() => forceSwipe("left")}
+          />
+
+          <Button
+            text={<FontAwesome name="undo" size={48} />}
+            fontSize={62}
+            width="30%"
+            bgColor="#FFC700"
+            onClick={() => null}
+          />
+
+          <Button
+            text={<FontAwesome name="check" size={48} />}
+            fontSize={62}
+            width="30%"
+            onClick={() => forceSwipe("right")}
+          />
+        </View>
       </View>
-
-      <View style={styles.btnContainer}>
-        <Button
-          text={<FontAwesome name="remove" size={62} />}
-          fontSize={62}
-          width="30%"
-          bgColor="#F35151"
-        />
-
-        <Button
-          text={<FontAwesome name="undo" size={62} />}
-          fontSize={62}
-          width="30%"
-          bgColor="#FFC700"
-        />
-
-        <Button
-          text={<FontAwesome name="check" size={62} />}
-          fontSize={62}
-          width="30%"
-        />
-      </View>
-    </View>
-  );
+    );
+  }
 }
 
 const styles = {
@@ -232,11 +298,7 @@ const styles = {
     position: "absolute"
   },
   imageBg: {
-    flex: 1,
-    height: null,
-    width: null,
-    resizeMode: "cover",
-    borderRadius: 20
+    flex: 1
   },
   actionTextContainer: {
     position: "absolute",
@@ -249,8 +311,33 @@ const styles = {
     fontWeight: "bold",
     padding: 10
   },
+  label: {
+    position: "absolute",
+    bottom: "3%",
+    alignItems: "flex-start",
+    alignSelf: "center",
+    paddingHorizontal: 7,
+    paddingBottom: 5,
+    width: "93%",
+    borderRadius: 10,
+    backgroundColor: "#fff"
+  },
+  listingHighlights: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between"
+  },
+  community: {
+    textTransform: "uppercase",
+    fontWeight: "bold",
+    fontSize: 36
+  },
+  detail: {
+    width: "30%",
+    flexDirection: "row"
+  },
   btnContainer: {
-    height: 100,
+    height: 80,
     width: "100%",
     paddingHorizontal: 10,
     flexDirection: "row",
