@@ -7,13 +7,15 @@ import {
   Animated,
   PanResponder
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { FontAwesome } from "@expo/vector-icons";
 import { Button } from "./components/Button";
 import Data from "./data.json";
 
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = 0.375 * SCREEN_WIDTH;
-const OUT_DURATION = 500;
+const OUT_DURATION = 400;
 const BASE_IMG_URI = "http://dbergeron2.dmitstudent.ca/img/";
 
 export default function Swiper() {
@@ -29,10 +31,6 @@ export default function Swiper() {
     outputRange: ["-10deg", "0deg", "10deg"],
     extrapolate: "clamp"
   });
-
-  const rotateAndTranslate = {
-    transform: [{ rotate: rotate }, ...position.getTranslateTransform()]
-  };
 
   const likeOpacity = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -78,17 +76,13 @@ export default function Swiper() {
       toValue: { x, y: 0 },
       duration: OUT_DURATION
     }).start(() => {
-      swipeCompleted(direction);
+      direction === "left"
+        ? swipedLeft(homes[currentIndex])
+        : swipedRight(homes[currentIndex]);
+
+      setIndex(currentIndex + 1);
+      position.setValue({ x: 0, y: 0 });
     });
-  };
-
-  const swipeCompleted = direction => {
-    const listing = homes[currentIndex];
-
-    direction === "left" ? swipedLeft(listing) : swipedRight(listing);
-
-    setIndex(currentIndex + 1);
-    position.setValue({ x: 0, y: 0 });
   };
 
   const swipedLeft = listing => {
@@ -116,7 +110,15 @@ export default function Swiper() {
                   <Animated.View
                     {...panResponder.panHandlers}
                     key={listing.mls}
-                    style={[styles.cards, rotateAndTranslate]}
+                    style={[
+                      styles.cards,
+                      {
+                        transform: [
+                          { rotate: rotate },
+                          ...position.getTranslateTransform()
+                        ]
+                      }
+                    ]}
                   >
                     <ImageBackground
                       imageStyle={{ borderRadius: 10, resizeMode: "cover" }}
@@ -127,48 +129,42 @@ export default function Swiper() {
                     >
                       <Animated.View
                         style={[
-                          styles.actionTextContainer,
+                          styles.actionOverlayColor,
                           {
                             opacity: likeOpacity,
-                            left: 40,
-                            transform: [{ rotate: "-30deg" }]
+                            right: -10
                           }
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.actionText,
-                            {
-                              borderColor: "lightgreen",
-                              color: "lightgreen"
-                            }
-                          ]}
-                        >
-                          LIKE
-                        </Text>
+                        <LinearGradient
+                          start={[0.0, 0.5]}
+                          end={[1.0, 0.5]}
+                          locations={[0.0, 1.0]}
+                          colors={["transparent", "rgba(18,167,101,1)"]}
+                          style={{
+                            flex: 1
+                          }}
+                        />
                       </Animated.View>
 
                       <Animated.View
                         style={[
-                          styles.actionTextContainer,
+                          styles.actionOverlayColor,
                           {
                             opacity: dislikeOpacity,
-                            right: 25,
-                            transform: [{ rotate: "30deg" }]
+                            left: -10
                           }
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.actionText,
-                            {
-                              borderColor: "red",
-                              color: "red"
-                            }
-                          ]}
-                        >
-                          DISCARD
-                        </Text>
+                        <LinearGradient
+                          start={[0.0, 0.5]}
+                          end={[1.0, 0.5]}
+                          locations={[0.0, 1.0]}
+                          colors={["rgba(243,81,81,1)", "transparent"]}
+                          style={{
+                            flex: 1
+                          }}
+                        />
                       </Animated.View>
 
                       <View style={styles.label}>
@@ -300,10 +296,12 @@ const styles = {
   imageBg: {
     flex: 1
   },
-  actionTextContainer: {
+  actionOverlayColor: {
     position: "absolute",
-    top: 50,
-    zIndex: 1000
+    zIndex: 1000,
+    top: -SCREEN_HEIGHT / 4,
+    height: SCREEN_HEIGHT * 1.5,
+    width: "95%"
   },
   actionText: {
     borderWidth: 1,
